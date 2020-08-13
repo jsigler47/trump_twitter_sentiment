@@ -1,6 +1,8 @@
 import sentiment_mod as s
 import numpy as np
 import pandas as pd
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
 
 # Source: http://www.trumptwitterarchive.com/archive
 
@@ -9,8 +11,18 @@ pos = 0
 neg = 0
 unc = 0
 data = pd.read_csv('data/trump_tweets.csv')
+stop_words = set(stopwords.words('english'))
+ps = PorterStemmer()
+
+def clean_data():
+    for i, text in enumerate(data['text']):
+        words = text.split()
+        words = [w.lower() for w in words if not w in stop_words]
+        words = [ps.stem(w) for w in words if w.isalpha()]
+        data.at[i, 'text'] = ' '.join(words)
 
 def process_data():
+    global pos, neg, unc, data
     results = [None] * len(data)
     #print(data.head())
 
@@ -18,6 +30,7 @@ def process_data():
         try:
             result = list(s.sentiment(text))
         except Exception as e:
+            result = ('UNCERTAIN', ' ')
             print(e)
 
         if result[1] < THRESHOLD:
@@ -41,6 +54,7 @@ def process_data():
 
 
 def write_data():
+    global pos, neg, unc, data
     data.to_csv('data/processed.csv')
     f = open('data/totals.txt', 'w')
     f.write('pos, ' + repr(pos) + '\n')
@@ -48,6 +62,8 @@ def write_data():
     f.write('unc, ' + repr(unc) + '\n')
     f.close()
 
-
+print(data.head())
+clean_data()
+print(data.head())
 data['Sentiment'] = process_data()
 write_data()
